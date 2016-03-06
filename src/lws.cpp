@@ -28,6 +28,7 @@ namespace lws
 namespace clws
 {
 #include <libwebsockets.h>
+#include "../../libwebsockets/lib/private-libwebsockets.h"
 }
 
 int callback(clws::lws *wsi, clws::lws_callback_reasons reason, void *user, void *in, size_t len)
@@ -147,6 +148,11 @@ int callback(clws::lws *wsi, clws::lws_callback_reasons reason, void *user, void
 Socket::Socket(clws::lws *wsi) : wsi(wsi)
 {
 
+}
+
+Socket::Socket(void *context, unsigned int fd)
+{
+    wsi = wsi_from_fd(((clws::lws_context *) context), fd);
 }
 
 void Socket::send(char *data, size_t length, bool binary)

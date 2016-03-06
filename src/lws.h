@@ -29,10 +29,11 @@ struct SocketExtension {
 };
 
 struct Socket {
-private:
+public:
     clws::lws *wsi;
 public:
     Socket(clws::lws *wsi);
+    Socket(void *context, unsigned int fd);
     void send(char *data, size_t length, bool binary);
     void send(char *paddedBuffer, size_t length, bool binary, bool transferOwnership);
     char *getHeader(int header);
@@ -62,7 +63,7 @@ struct ServerInternals {
 
 class Server
 {
-private:
+public:
 #ifdef LIBUV_BACKEND
     void *loop;
 #else
