@@ -147,18 +147,17 @@ void constructor(const FunctionCallbackInfo<Value> &args)
 
 inline Local<Object> wrapSocket(lws::Socket *socket, Isolate *isolate)
 {
-    struct SocketWrapper : lws::Socket {
-        Local<Object> wrap(Local<Object> s)
-        {
-            s->SetAlignedPointerInInternalField(0, wsi);
-            return s;
-        }
-    };
+    union {
+        lws::Socket socket;
+        void *wsi;
+    } s = {*socket};
 
-    return ((SocketWrapper *) socket)->wrap(Local<Object>::New(isolate, persistentSocket));
+    Local<Object> wrappedSocket = Local<Object>::New(isolate, persistentSocket);
+    wrappedSocket->SetAlignedPointerInInternalField(0, s.wsi);
+    return wrappedSocket;
 }
 
-inline lws::Socket unwrapSocket(Local<Object> object)
+inline lws::Socket unwrapSocket(const Local<Object> &object)
 {
     return lws::Socket((lws::clws::lws *) object->GetAlignedPointerFromInternalField(0));
 }
