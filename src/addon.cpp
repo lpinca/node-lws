@@ -145,22 +145,15 @@ void constructor(const FunctionCallbackInfo<Value> &args)
     }
 }
 
-inline Local<Object> wrapSocket(lws::Socket *socket, Isolate *isolate)
+inline Local<Number> wrapSocket(lws::Socket *socket, Isolate *isolate)
 {
-    struct SocketWrapper : lws::Socket {
-        Local<Object> wrap(Local<Object> s)
-        {
-            s->SetAlignedPointerInInternalField(0, wsi);
-            return s;
-        }
-    };
-
-    return ((SocketWrapper *) socket)->wrap(Local<Object>::New(isolate, persistentSocket));
+    return Number::New(isolate, *(double *) socket);
 }
 
-inline lws::Socket unwrapSocket(Local<Object> object)
+inline lws::Socket unwrapSocket(const Local<Value> &object)
 {
-    return lws::Socket((lws::clws::lws *) object->GetAlignedPointerFromInternalField(0));
+    double dbl = object->NumberValue();
+    return *(lws::Socket *) &dbl;
 }
 
 Local<Object> generateHeaders(Isolate *isolate, lws::Socket &socket)
@@ -210,7 +203,7 @@ void on(const FunctionCallbackInfo<Value> &args)
         connectionCallback.Reset(isolate, Local<Function>::Cast(args[1]));
         server->onConnection([isolate](lws::Socket socket) {
             HandleScope hs(isolate);
-            Local<Value> argv[] = {wrapSocket(&socket, isolate)->Clone()};
+            Local<Value> argv[] = {wrapSocket(&socket, isolate)/*->Clone()*/};
             Local<Function>::New(isolate, connectionCallback)->Call(Null(isolate), 1, argv);
         });
     }
@@ -240,7 +233,7 @@ void on(const FunctionCallbackInfo<Value> &args)
 
 void setUserData(const FunctionCallbackInfo<Value> &args)
 {
-    lws::Socket socket = unwrapSocket(args[0]->ToObject());
+    lws::Socket socket = unwrapSocket(args[0]);
     if (*socket.getUser()) {
         ((Persistent<Value> *) *socket.getUser())->Reset(args.GetIsolate(), args[1]);
     }
@@ -251,7 +244,7 @@ void setUserData(const FunctionCallbackInfo<Value> &args)
 
 void getUserData(const FunctionCallbackInfo<Value> &args)
 {
-    lws::Socket socket = unwrapSocket(args[0]->ToObject());
+    lws::Socket socket = unwrapSocket(args[0]);
     if (*socket.getUser()) {
         args.GetReturnValue().Set(Local<Value>::New(args.GetIsolate(), *(Persistent<Value> *) *socket.getUser()));
     }
@@ -259,7 +252,7 @@ void getUserData(const FunctionCallbackInfo<Value> &args)
 
 void getFd(const FunctionCallbackInfo<Value> &args)
 {
-    lws::Socket socket = unwrapSocket(args[0]->ToObject());
+    lws::Socket socket = unwrapSocket(args[0]);
     args.GetReturnValue().Set(Integer::NewFromUnsigned(args.GetIsolate(), socket.getFd()));
 }
 
@@ -295,7 +288,7 @@ void handleUpgrade(const FunctionCallbackInfo<Value> &args)
     Local<Function>::Cast(socketObject->Get(v8DestroyKey))->Call(socketObject, 0, nullptr);
 
     if (socket) {
-        args.GetReturnValue().Set(wrapSocket(&socket, isolate)->Clone());
+        args.GetReturnValue().Set(wrapSocket(&socket, isolate)/*->Clone()*/);
     }
 }
 
@@ -312,13 +305,13 @@ void close(const FunctionCallbackInfo<Value> &args)
     }
     else {
         // shut down the socket
-        unwrapSocket(args[0]->ToObject()).close();
+        unwrapSocket(args[0]).close();
     }
 }
 
 void send(const FunctionCallbackInfo<Value> &args)
 {
-    unwrapSocket(args[0]->ToObject())
+    unwrapSocket(args[0])
             .send(node::Buffer::Data(args[1])
             , node::Buffer::Length(args[1])
             , args[2]->BooleanValue());
@@ -334,7 +327,7 @@ void prepareBuffer(const FunctionCallbackInfo<Value> &args)
 
 void sendPrepared(const FunctionCallbackInfo<Value> &args)
 {
-    unwrapSocket(args[0]->ToObject())
+    unwrapSocket(args[0])
             .send(node::Buffer::Data(args[1])
             , node::Buffer::Length(args[1]) - lws::Server::getPrePadding() - lws::Server::getPostPadding()
             , args[2]->BooleanValue()

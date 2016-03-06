@@ -29,7 +29,7 @@ struct SocketExtension {
 };
 
 struct Socket {
-protected:
+private:
     clws::lws *wsi;
 public:
     Socket(clws::lws *wsi);
